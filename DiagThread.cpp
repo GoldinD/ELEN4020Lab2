@@ -8,9 +8,10 @@
 using namespace std;
 
 struct matrixMultiplicationProps{
-	int id = 1;
+
 	int randomSize;
 	int* numbers = NULL;
+	int rowEvaluate = 0;
 	
 };
 
@@ -24,10 +25,10 @@ void display(void* args)
 	int mat = 0;
 	// Displaying matA	
     	cout << "2-D Matrix A:" << endl << endl;
-	cout << setw(3);
+	cout << setw(5);
    	for (int i = 0; i < matPropsDisp->randomSize*matPropsDisp->randomSize ; i++)
 	{
-		cout << matPropsDisp->numbers[i] << setw(3);
+		cout << matPropsDisp->numbers[i] << setw(5);
 		count++;
 		mat++;
 		if (mat == matPropsDisp->randomSize*matPropsDisp->randomSize)
@@ -42,6 +43,7 @@ void display(void* args)
 		}
 	}
 }
+
 
 // Normal 2d matrix multiplication.
 void* transformDiagNorm(void* args)
@@ -77,33 +79,30 @@ void* transformDiagNorm(void* args)
 
 void* transformDiagPthread(void* args)
 {
+	matrixMultiplicationProps *matTemp = (struct matrixMultiplicationProps*)args;
+	
+	// Thread to figure out what row to evaluate
+	int tempRow = matTemp->rowEvaluate;
+	int row = tempRow;
 
-	struct matrixMultiplicationProps *matTemp = (struct matrixMultiplicationProps*)args;
+	// Set next row for next thread to evaluate
+	tempRow++;
+	matTemp->rowEvaluate = tempRow;
 
 	int temp;
-	int row = 2;
 	int multi = 1;
-	int i = 1;
+	int i = ((row-1)*(matTemp->randomSize))+row;
 
-	for(i; i < matTemp->randomSize*matTemp->randomSize; i++)
+	for(i; i < (row)*(matTemp->randomSize); i++)
 	{
 		// Do transposition.
 		temp = matTemp->numbers[i];
 		matTemp->numbers[i] = matTemp->numbers[i+multi*(matTemp->randomSize-1)];
 		matTemp->numbers[i+multi*(matTemp->randomSize-1)] = temp;
 		multi++;
-		
-		// If the end of the row is reached. 7, 15, 23
-		if (i == (row - 1)*(matTemp->randomSize)-1)
-		{	
-			i += row; // Start at a new i which is offset to start at next row.
-			row++;
-			multi = 1; // Reset multiplier to get correct values to transpose.
-		}
-		//cin.get();
-
 	}
 	return (NULL);
+	
 }
 
 int main ( int argc, char* argv[] )
@@ -140,12 +139,12 @@ int main ( int argc, char* argv[] )
 		matProps->numbers[i] = i+1;
 	}
 
-	display((void *) matProps);
+	//display((void *) matProps);
 
 	// Normal function call to do transformation
-	transformDiagNorm((void *) matProps);
+	//transformDiagNorm((void *) matProps);
 
-	display((void *) matProps);
+	//display((void *) matProps);
 
 	// Repopulate Array
 	for (int i = 0; i < (randomSize*randomSize); i++)
@@ -153,32 +152,29 @@ int main ( int argc, char* argv[] )
 		//matProps->numbers[i] = rand() % (randomSize*randomSize); 
 		matProps->numbers[i] = i+1;
 	}
-	display((void *) matProps);
+	//display((void *) matProps);
 
-
-	
-	
-
-	/*
-	// Setting variables of struct
-	matProps->blockSizeForThread = blockSize;
-	pthread_t threads[randomSize/blockSize];
-	matProps->numRows = randomSize;
-	matProps->numColumns = randomSize;
-	t = clock(); // Initialize timer
+		//pthread_t thread;
+		//pthread_create(&thread, NULL, transformDiagPthread, (void *)matProps);
+		//pthread_join(thread, NULL);
 
 	// Threading
-	for (int i = 0; i < randomSize/blockSize; i++)
+	display((void *) matProps);
+	pthread_t threads[randomSize-1];
+	matProps->rowEvaluate = 1;
+	for (int i = 0; i < randomSize-1; i++) // can be either randomSize or randomSize - 1. Dont 		need last thread as it only tries to compute the last value which does not move anyways.
 	{	
 		pthread_create(&threads[i], NULL, transformDiagPthread, (void *)matProps);
 	}
 	
 	// Join threads
-	for (int i = 0; i < randomSize/blockSize; i++)
+	for (int i = 0; i < randomSize-1; i++)
 	{	
 		pthread_join(threads[i], NULL);
 
-	}*/
+	}
+
+	display((void *) matProps);
 
  return 0;
 }
