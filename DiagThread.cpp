@@ -45,7 +45,7 @@ void display(void* args)
 }
 
 
-// Normal 2d matrix multiplication.
+// Normal 2d matrix transformation
 void* transformDiagNorm(void* args)
 {
 
@@ -80,20 +80,12 @@ void* transformDiagNorm(void* args)
 void* transformDiagPthread(void* args)
 {
 	matrixMultiplicationProps *matTemp = (struct matrixMultiplicationProps*)args;
-	
-	// Thread to figure out what row to evaluate
-	int tempRow = matTemp->rowEvaluate;
-	int row = tempRow;
-
-	// Set next row for next thread to evaluate
-	tempRow++;
-	matTemp->rowEvaluate = tempRow;
 
 	int temp;
 	int multi = 1;
-	int i = ((row-1)*(matTemp->randomSize))+row;
+	int i = ((matTemp->rowEvaluate-1)*(matTemp->randomSize))+matTemp->rowEvaluate;
 
-	for(i; i < (row)*(matTemp->randomSize); i++)
+	for(i; i < (matTemp->rowEvaluate)*(matTemp->randomSize); i++)
 	{
 		// Do transposition.
 		temp = matTemp->numbers[i];
@@ -160,11 +152,16 @@ int main ( int argc, char* argv[] )
 
 	// Threading
 	display((void *) matProps);
-	pthread_t threads[randomSize-1];
-	matProps->rowEvaluate = 1;
+	pthread_t threads[randomSize];
 	for (int i = 0; i < randomSize-1; i++) // can be either randomSize or randomSize - 1. Dont 		need last thread as it only tries to compute the last value which does not move anyways.
-	{	
-		pthread_create(&threads[i], NULL, transformDiagPthread, (void *)matProps);
+	{
+
+		// Create the struct for the thread
+		matrixMultiplicationProps *mat = (struct matrixMultiplicationProps*) malloc(sizeof(struct matrixMultiplicationProps));
+		mat->numbers = matProps->numbers;
+		mat->randomSize = matProps->randomSize; 
+		mat->rowEvaluate = i+1;	
+		pthread_create(&threads[i], NULL, transformDiagPthread, (void *)mat);
 	}
 	
 	// Join threads
