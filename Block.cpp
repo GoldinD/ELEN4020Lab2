@@ -11,14 +11,15 @@ struct matrixMultiplicationProps{
 
 	int randomSize;
 	int* numbers = NULL;
-	int id = 0;
+	//int id = 0;
 	int blockSize = 0;
 	int blockDim = 0;
-	int count = 0;
+	//int count = 0;
 
 	int startPlaceHolder1 = 0;
 	int endPlaceHolder1 = 0;
 	int startPlaceHolder2 = 0;
+	int endPlaceHolder2 = 0;
 	int offset = 0;
 	int* transpose1 = NULL;
 	int* transpose2 = NULL;
@@ -56,6 +57,43 @@ void* transformBlock(void* args)
 	return (NULL);
 }
 
+void* transformBlocks(void* args)
+{
+
+	struct matrixMultiplicationProps *matTemp = (struct matrixMultiplicationProps*)args;
+
+	int temp;
+	int row = 2;
+	int multi = 1;
+	int i = 1;
+
+	for(i; i < matTemp->blockDim*matTemp->blockDim; i++)
+	{
+		//cout << matTemp->transpose1[i] << endl;
+		// Do transposition.
+		temp = matTemp->transpose1[i];
+		matTemp->transpose1[i] = matTemp->transpose1[i+multi*(matTemp->blockDim-1)];
+		matTemp->transpose1[i+multi*(matTemp->blockDim-1)] = temp;
+
+		temp = matTemp->transpose2[i];
+		matTemp->transpose2[i] = matTemp->transpose2[i+multi*(matTemp->blockDim-1)];
+		matTemp->transpose2[i+multi*(matTemp->blockDim-1)] = temp;
+		multi++;
+		
+		// If the end of the row is reached. 7, 15, 23
+		if (i == (row - 1)*(matTemp->blockDim)-1)
+		{	
+			i += row; // Start at a new i which is offset to start at next row.
+			row++;
+			multi = 1; // Reset multiplier to get correct values to transpose.
+		}
+
+	}
+
+	
+	return (NULL);
+}
+
 // Display entire matrix
 void display(void* args)
 {
@@ -67,10 +105,10 @@ void display(void* args)
 	int mat = 0;
 	// Displaying matA	
     	cout << "2-D Matrix A:" << endl << endl;
-	cout << setw(5);
+	cout << setw(8);
    	for (int i = 0; i < matPropsDisp->randomSize*matPropsDisp->randomSize ; i++)
 	{
-		cout << matPropsDisp->numbers[i] << setw(5);
+		cout << matPropsDisp->numbers[i] << setw(8);
 		count++;
 		mat++;
 		if (mat == matPropsDisp->randomSize*matPropsDisp->randomSize)
@@ -115,6 +153,58 @@ void displayBlock(void* args)
 	}
 }
 
+void displayBlocks(void* args)
+{
+
+	// Creat the struct
+	struct matrixMultiplicationProps *matPropsDisp = (struct matrixMultiplicationProps*)args;
+
+	int count = 0;
+	int mat = 0;
+	// Displaying matA	
+    	cout << "2-D Matrix A:" << endl << endl;
+	cout << setw(5);
+   	for (int i = 0; i < matPropsDisp->blockDim*matPropsDisp->blockDim ; i++)
+	{
+		cout << matPropsDisp->transpose1[i] << setw(5);
+		count++;
+		mat++;
+		if (mat == matPropsDisp->blockDim*matPropsDisp->blockDim)
+		{
+			cout << endl;
+			mat = 0;
+		}
+		if (count == matPropsDisp->blockDim)
+		{
+			cout << endl;
+			count = 0;
+		}
+	}
+
+
+	count = 0;
+	mat = 0;
+	// Displaying matA	
+    	cout << "2-D Matrix A:" << endl << endl;
+	cout << setw(5);
+   	for (int i = 0; i < matPropsDisp->blockDim*matPropsDisp->blockDim ; i++)
+	{
+		cout << matPropsDisp->transpose2[i] << setw(5);
+		count++;
+		mat++;
+		if (mat == matPropsDisp->blockDim*matPropsDisp->blockDim)
+		{
+			cout << endl;
+			mat = 0;
+		}
+		if (count == matPropsDisp->blockDim)
+		{
+			cout << endl;
+			count = 0;
+		}
+	}
+}
+
 void* DiagBlockTransform(void* args)
 {
 	// Make a local pointer to the struct
@@ -128,7 +218,7 @@ void* DiagBlockTransform(void* args)
 	for (int i = matTemp->startPlaceHolder1; i <= matTemp->endPlaceHolder1; i++)
 	{	
 		matTemp->transpose1[placeHolder] = matTemp->numbers[i];
-		cout << matTemp->transpose1[placeHolder] << "      " << placeHolder << endl;
+		//cout << matTemp->transpose1[placeHolder] << "      " << placeHolder << endl;
 		rowCount++;
 		
 		if(rowCount == matTemp->blockDim+1)
@@ -139,10 +229,10 @@ void* DiagBlockTransform(void* args)
 		}
 		placeHolder++;
 	}
-	displayBlock((void *) matTemp);
+	//displayBlock((void *) matTemp);
 
 	// Transpose the block
-	transformBlock((void *) matTemp);
+	transformBlocks((void *) matTemp);
 	
 	// Replace values in final matrix with new blocks.
 	placeHolder = 0;
@@ -160,8 +250,106 @@ void* DiagBlockTransform(void* args)
 		}
 		placeHolder++;
 	}
-	displayBlock((void *) matTemp);
-	cin.get();
+	//displayBlock((void *) matTemp);
+	//cin.get();
+
+}
+
+void* BlockTransformSwap(void* args)
+{
+
+	// Make a local pointer to the struct
+	matrixMultiplicationProps *matTemp = (struct matrixMultiplicationProps*)args;
+	int rowCount = 1;
+	int offset = matTemp->randomSize - matTemp->blockDim; //- matTemp->id*matTemp->blockDim;
+	int placeHolder = 0;
+
+	
+	// For loop to grab values that need to be transposed in first block
+	for (int i = matTemp->startPlaceHolder1; i <= matTemp->endPlaceHolder1; i++)
+	{	
+		matTemp->transpose1[placeHolder] = matTemp->numbers[i];
+		//cout << matTemp->transpose1[placeHolder] << "      " << placeHolder << endl;
+		rowCount++;
+		
+		if(rowCount == matTemp->blockDim+1)
+		{
+			i += offset;
+			rowCount = 1;
+			
+		}
+		placeHolder++;
+	}
+	
+	rowCount = 1;
+	offset = matTemp->randomSize - matTemp->blockDim; //- matTemp->id*matTemp->blockDim;
+	placeHolder = 0;
+
+	// For loop to grab values that need to be transposed in second block
+	for (int i = matTemp->startPlaceHolder2; i <= matTemp->endPlaceHolder2; i++)
+	{	
+		matTemp->transpose2[placeHolder] = matTemp->numbers[i];
+		//cout << matTemp->numbers[i] << "      " << placeHolder << endl;
+		rowCount++;
+		
+		if(rowCount == matTemp->blockDim+1)
+		{
+			i += offset;
+			rowCount = 1;
+			
+		}
+		placeHolder++;
+	}
+
+	//displayBlocks((void *) matTemp);
+
+	// Transpose the blocks
+	transformBlocks((void *) matTemp);
+
+	//displayBlocks((void *) matTemp);
+	
+	// Swap The Blocks
+	int temp[matTemp->blockDim*matTemp->blockDim] = {}; 
+	rowCount = 1;
+	offset = matTemp->randomSize - matTemp->blockDim; //- matTemp->id*matTemp->blockDim;
+	placeHolder = 0;
+	for (int i = matTemp->startPlaceHolder1; i <= matTemp->endPlaceHolder1; i++)
+	{
+		temp[placeHolder] = matTemp->transpose1[placeHolder];
+		matTemp->numbers[i] = matTemp->transpose2[placeHolder];
+		//cout << matTemp->transpose1[placeHolder] << "      " << placeHolder << endl;
+		rowCount++;
+		
+		if(rowCount == matTemp->blockDim+1)
+		{
+			i += offset;
+			rowCount = 1;
+			
+		}
+		placeHolder++;
+	}
+
+	rowCount = 1;
+	offset = matTemp->randomSize - matTemp->blockDim; //- matTemp->id*matTemp->blockDim;
+	placeHolder = 0;
+	for (int i = matTemp->startPlaceHolder2; i <= matTemp->endPlaceHolder2; i++)
+	{
+		matTemp->numbers[i] = temp[placeHolder];
+		//cout << matTemp->transpose1[placeHolder] << "      " << placeHolder << endl;
+		rowCount++;
+		
+		if(rowCount == matTemp->blockDim+1)
+		{
+			i += offset;
+			rowCount = 1;
+			
+		}
+		placeHolder++;
+	}
+
+
+
+
 
 }
 
@@ -169,7 +357,7 @@ int main ( int argc, char* argv[] )
 {
 	// Define clock
 	clock_t t;
-	int randomSize = 16;
+	int randomSize = 1024;
 
 	// User input
 	/* while (randomSize != 10 | randomSize != 20 | randomSize != 30)
@@ -208,15 +396,16 @@ int main ( int argc, char* argv[] )
 		matProps->numbers[i] = i+1;
 	}
 
+	display((void *) matProps);
 	// Threading
-	//display((void *) matProps);
 
 
-	int blockSizeDim = 4;
+	int blockSizeDim = 16;
 	int blockSize = blockSizeDim*blockSizeDim;
 	int numBlocks = (randomSize*randomSize)/blockSize;
 	int numThreads = ((numBlocks - (randomSize/blockSizeDim))/2) + (randomSize/blockSizeDim);
 	matProps->transpose1 = new int [blockSize];
+	matProps->transpose2 = new int [blockSize];
 	//cout << numThreads << endl;
 	//cin.get();
 	pthread_t threads[numThreads];
@@ -231,32 +420,76 @@ int main ( int argc, char* argv[] )
 		matrixMultiplicationProps *mat = (struct matrixMultiplicationProps*) malloc(sizeof(struct matrixMultiplicationProps));
 		mat->numbers = matProps->numbers;
 		mat->transpose1 = matProps->transpose1;
+		mat->transpose2 = matProps->transpose2;
 		mat->randomSize = matProps->randomSize; 
 		mat->blockSize = blockSize;
 		mat->blockDim = blockSizeDim;
-		mat->count = count;
-		mat->id = i+1;
+		//mat->count = count;
+		//mat->id = i+1;
 		//cout << i << endl;
 		mat->startPlaceHolder1 = (count*randomSize*blockSizeDim) + (i*blockSizeDim);
 		mat->endPlaceHolder1 = mat->startPlaceHolder1 + blockSizeDim + ((blockSizeDim-1)*randomSize) - 1;
-		cout << mat->startPlaceHolder1 << "		" << mat->endPlaceHolder1 << endl;
+		//cout << mat->startPlaceHolder1 << "		" << mat->endPlaceHolder1 << endl;
 		pthread_create(&threads[i], NULL, DiagBlockTransform, (void *)mat);
-		cin.get();
+		//cin.get();
 		count++;	
 	}
 	
-	// for loop to deal with rest of blocks transposition and switching
-	//for (i; i < numThreads - 1; i++)
-	//{
+	// For loop to deal with rest of blocks transposition and switching
+	count = 1;
+	int row = 1;
+	int blockNumStart = 2;
+	int blockNum = 2;
+	int blockNumOriginal = blockNum;
+	int offset = 0;
+	int blockOffset = 1;
+	int secondMatOffset = randomSize - blockNum*blockSizeDim;
+	
+	for (i; i < numThreads; i++)
+	{
+		//cout << i << endl;
+		// Create the struct for the thread
+		matrixMultiplicationProps *mat = (struct matrixMultiplicationProps*) malloc(sizeof(struct matrixMultiplicationProps));
+		mat->numbers = matProps->numbers;
+		mat->transpose1 = matProps->transpose1;
+		mat->transpose2 = matProps->transpose2;
+		mat->randomSize = matProps->randomSize; 
+		mat->blockSize = blockSize;
+		mat->blockDim = blockSizeDim;
+		//mat->count = count;
 
-	//}	
+		mat->startPlaceHolder1 = blockSizeDim*(blockNum-1) + offset;
+		mat->endPlaceHolder1 = mat->startPlaceHolder1 + blockSizeDim + ((blockSizeDim-1)*randomSize) - 1;
+		mat->startPlaceHolder2 = mat->endPlaceHolder1 + secondMatOffset+1;
+		mat->endPlaceHolder2 = mat->startPlaceHolder2 + blockSizeDim + ((blockSizeDim-1)*randomSize) - 1;
+		//cout << mat->startPlaceHolder1 << "		" << mat->endPlaceHolder1 << endl;
+		//cout << mat->startPlaceHolder2 << "		" << mat->endPlaceHolder2 << endl;
+		blockNum++;
+		secondMatOffset += randomSize*blockSizeDim - blockSizeDim;
+		//cout << endl << "MatOffset		" << secondMatOffset << endl;
+		pthread_create(&threads[i], NULL, BlockTransformSwap, (void *)mat);
+		//display((void *) matProps);
+		//cin.get();
+		// If you reach the end of a row of blocks, go to the next row
+		if(mat->endPlaceHolder1 == row*randomSize*blockSizeDim - 1 && i < numThreads-1)
+		{
+			offset += randomSize*blockSizeDim;
+			blockNumStart++;
+			row++;
+			blockNum = blockNumStart;
+			secondMatOffset = randomSize - blockNumOriginal*blockSizeDim;
+			//cout << endl << "got here		" << offset << endl;
+		}
+		
+
+	}	
 	
 	// Join threads
-	//for (int i = 0; i < randomSize/blockSizeDim; i++)
-	//{	
-	//	pthread_join(threads[i], NULL);
+	for (int i = 0; i < numThreads; i++)
+	{	
+		pthread_join(threads[i], NULL);
 
-	//}
+	}
 
 	display((void *) matProps);
 
