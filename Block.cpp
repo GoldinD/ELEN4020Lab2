@@ -4,6 +4,7 @@
 #include <typeinfo>
 #include <iomanip>
 #include <time.h> 
+#include <math.h>
 
 using namespace std;
 
@@ -105,10 +106,10 @@ void display(void* args)
 	int mat = 0;
 	// Displaying matA	
     	cout << "2-D Matrix A:" << endl << endl;
-	cout << setw(8);
+	cout << setw(6);
    	for (int i = 0; i < matPropsDisp->randomSize*matPropsDisp->randomSize ; i++)
 	{
-		cout << matPropsDisp->numbers[i] << setw(8);
+		cout << matPropsDisp->numbers[i] << setw(6);
 		count++;
 		mat++;
 		if (mat == matPropsDisp->randomSize*matPropsDisp->randomSize)
@@ -357,7 +358,7 @@ int main ( int argc, char* argv[] )
 {
 	// Define clock
 	clock_t t;
-	int randomSize = 1024;
+	int randomSize = 128;
 
 	// User input
 	/* while (randomSize != 10 | randomSize != 20 | randomSize != 30)
@@ -396,19 +397,44 @@ int main ( int argc, char* argv[] )
 		matProps->numbers[i] = i+1;
 	}
 
-	display((void *) matProps);
+	//display((void *) matProps);
 	// Threading
 
-
-	int blockSizeDim = 16;
+	// This was used originally to change the number of threads based on the size of the blocks wanted
+	/*int blockSizeDim = 4;
 	int blockSize = blockSizeDim*blockSizeDim;
 	int numBlocks = (randomSize*randomSize)/blockSize;
 	int numThreads = ((numBlocks - (randomSize/blockSizeDim))/2) + (randomSize/blockSizeDim);
 	matProps->transpose1 = new int [blockSize];
-	matProps->transpose2 = new int [blockSize];
+	matProps->transpose2 = new int [blockSize];*/
+
+	// Calculate the how many blocks and the dimensions of the blocks needed to execute the transposition based on the number of 		threads defined.
+	const int numberThreads = 10;
+	int numBlocks = numberThreads;
+	
+	//Block size will increase to suit number of threads
+	while ((randomSize*randomSize)%numBlocks != 0)
+	{
+		numBlocks++;
+	}
+	int blockSize = (randomSize*randomSize)/numBlocks;
+	int blockSizeDim = sqrt(blockSize);	
+	
+	
+	
+	
+	cout << "Number of Threads: " << numberThreads << endl;
+	cout << "Number of Blocks: " << numBlocks << endl;
+	cout << "Block Size: " << blockSize << endl;
+	cout << "Block Dimension: " << blockSizeDim << endl;
+
+	matProps->transpose1 = new int [blockSize];
+	matProps->transpose2 = new int [blockSize];	
+
+
 	//cout << numThreads << endl;
 	//cin.get();
-	pthread_t threads[numThreads];
+	pthread_t threads[numberThreads];
 	int count = 0;
 	int i = 0;	
 
@@ -445,7 +471,7 @@ int main ( int argc, char* argv[] )
 	int blockOffset = 1;
 	int secondMatOffset = randomSize - blockNum*blockSizeDim;
 	
-	for (i; i < numThreads; i++)
+	for (i; i < numberThreads; i++)
 	{
 		//cout << i << endl;
 		// Create the struct for the thread
@@ -471,7 +497,7 @@ int main ( int argc, char* argv[] )
 		//display((void *) matProps);
 		//cin.get();
 		// If you reach the end of a row of blocks, go to the next row
-		if(mat->endPlaceHolder1 == row*randomSize*blockSizeDim - 1 && i < numThreads-1)
+		if(mat->endPlaceHolder1 == row*randomSize*blockSizeDim - 1 && i < numberThreads-1)
 		{
 			offset += randomSize*blockSizeDim;
 			blockNumStart++;
@@ -483,15 +509,15 @@ int main ( int argc, char* argv[] )
 		
 
 	}	
-	
+	//cout << endl << i << endl;
 	// Join threads
-	for (int i = 0; i < numThreads; i++)
+	for (int i = 0; i < numberThreads; i++)
 	{	
 		pthread_join(threads[i], NULL);
 
 	}
 
-	display((void *) matProps);
+	//display((void *) matProps);
 
  return 0;
 }
