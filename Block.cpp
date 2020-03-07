@@ -358,7 +358,7 @@ int main ( int argc, char* argv[] )
 {
 	// Define clock
 	clock_t t;
-	int randomSize = 128;
+	int randomSize = 4096;
 
 	// User input
 	/* while (randomSize != 10 | randomSize != 20 | randomSize != 30)

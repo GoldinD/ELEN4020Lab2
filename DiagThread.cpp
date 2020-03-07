@@ -11,7 +11,8 @@ struct matrixMultiplicationProps{
 
 	int randomSize;
 	int* numbers = NULL;
-	int rowEvaluate = 0;
+	int rowStartEvaluate = 0;
+	int numRowsEvaluate = 0;
 	
 };
 
@@ -81,17 +82,23 @@ void* transformDiagPthread(void* args)
 {
 	matrixMultiplicationProps *matTemp = (struct matrixMultiplicationProps*)args;
 
-	int temp;
-	int multi = 1;
-	int i = ((matTemp->rowEvaluate-1)*(matTemp->randomSize))+matTemp->rowEvaluate;
-
-	for(i; i < (matTemp->rowEvaluate)*(matTemp->randomSize); i++)
+	for (int k = 0; k < matTemp->numRowsEvaluate; k++)
 	{
-		// Do transposition.
-		temp = matTemp->numbers[i];
-		matTemp->numbers[i] = matTemp->numbers[i+multi*(matTemp->randomSize-1)];
-		matTemp->numbers[i+multi*(matTemp->randomSize-1)] = temp;
-		multi++;
+		int temp;
+		int multi = 1;
+		int rowOffset = matTemp->rowStartEvaluate + 1;
+		int i = ((matTemp->rowStartEvaluate)*(matTemp->randomSize))+rowOffset;
+		
+		for(i; i < (rowOffset)*(matTemp->randomSize); i++)
+		{
+			// Do transposition.
+			temp = matTemp->numbers[i];
+			matTemp->numbers[i] = matTemp->numbers[i+multi*(matTemp->randomSize-1)];
+			matTemp->numbers[i+multi*(matTemp->randomSize-1)] = temp;
+			multi++;
+		}
+		matTemp->rowStartEvaluate++;
+		
 	}
 	return (NULL);
 	
@@ -101,7 +108,7 @@ int main ( int argc, char* argv[] )
 {
 	// Define clock
 	clock_t t;
-	int randomSize = 8;
+	int randomSize = 4096;
 
 	// User input
 	/* while (randomSize != 10 | randomSize != 20 | randomSize != 30)
@@ -146,32 +153,34 @@ int main ( int argc, char* argv[] )
 	}
 	//display((void *) matProps);
 
-		//pthread_t thread;
-		//pthread_create(&thread, NULL, transformDiagPthread, (void *)matProps);
-		//pthread_join(thread, NULL);
-
 	// Threading
-	display((void *) matProps);
-	pthread_t threads[randomSize];
-	for (int i = 0; i < randomSize-1; i++) // can be either randomSize or randomSize - 1. Dont 		need last thread as it only tries to compute the last value which does not move anyways.
+	//display((void *) matProps);
+	const int numThread = 4;
+	pthread_t threads[numThread];
+	int lastStart = 0;
+	for (int i = 0; i < numThread; i++) // can be either randomSize or randomSize - 1. Dont 		need last thread as it only tries to compute the last value which does not move anyways.
 	{
 
 		// Create the struct for the thread
 		matrixMultiplicationProps *mat = (struct matrixMultiplicationProps*) malloc(sizeof(struct matrixMultiplicationProps));
 		mat->numbers = matProps->numbers;
 		mat->randomSize = matProps->randomSize; 
-		mat->rowEvaluate = i+1;	
+		mat->rowStartEvaluate = lastStart;
+		lastStart = mat->rowStartEvaluate + randomSize/numThread;
+		mat->numRowsEvaluate = randomSize/numThread;
 		pthread_create(&threads[i], NULL, transformDiagPthread, (void *)mat);
 	}
 	
 	// Join threads
-	for (int i = 0; i < randomSize-1; i++)
+	for (int i = 0; i < numThread; i++)
 	{	
 		pthread_join(threads[i], NULL);
 
 	}
 
-	display((void *) matProps);
+	//display((void *) matProps);
+	cout << "Number of Threads: " << numThread << endl;
+	cout << "Rows Transposed Per Thread: " << randomSize/numThread << endl;
 
  return 0;
 }
