@@ -8,6 +8,15 @@
 
 using namespace std;
 
+struct matrixDiagTransformProps{
+
+	int randomSize;
+	int* numbers = NULL;
+	int rowStartEvaluate = 0;
+	int numRowsEvaluate = 0;
+	
+};
+
 struct matrixBlockTransformProps{
 
 	int randomSize;
@@ -26,6 +35,94 @@ struct matrixBlockTransformProps{
 	int* transpose2 = NULL;
 	
 };
+
+// Display findl result matrix
+void display(void* args)
+{
+
+	// Creat the struct
+	struct matrixDiagTransformProps *matPropsDisp = (struct matrixDiagTransformProps*)args;
+
+	int count = 0;
+	int mat = 0;
+	// Displaying matrix.	
+    	cout << "Matrix:" << endl << endl;
+	cout << setw(8);
+   	for (int i = 0; i < matPropsDisp->randomSize*matPropsDisp->randomSize ; i++)
+	{
+		cout << matPropsDisp->numbers[i] << setw(8);
+		count++;
+		mat++;
+		if (mat == matPropsDisp->randomSize*matPropsDisp->randomSize)
+		{
+			cout << endl;
+			mat = 0;
+		}
+		if (count == matPropsDisp->randomSize)
+		{
+			cout << endl;
+			count = 0;
+		}
+	}
+}
+
+
+// Normal 2d matrix transformation
+void* transformDiagNorm(void* args)
+{
+
+	struct matrixDiagTransformProps *matTemp = (struct matrixDiagTransformProps*)args;
+
+	int temp;
+	int row = 2;
+	int multi = 1;
+	int i = 1;
+
+	for(i; i < matTemp->randomSize*matTemp->randomSize; i++)
+	{
+		// Do transposition.
+		temp = matTemp->numbers[i];
+		matTemp->numbers[i] = matTemp->numbers[i+multi*(matTemp->randomSize-1)];
+		matTemp->numbers[i+multi*(matTemp->randomSize-1)] = temp;
+		multi++;
+		
+		// If the end of the row is reached. 7, 15, 23
+		if (i == (row - 1)*(matTemp->randomSize)-1)
+		{	
+			i += row; // Start at a new i which is offset to start at next row.
+			row++;
+			multi = 1; // Reset multiplier to get correct values to transpose.
+		}
+		//cin.get();
+
+	}
+	return (NULL);
+}
+
+void* transformDiagPthread(void* args)
+{
+	matrixDiagTransformProps *matTemp = (struct matrixDiagTransformProps*)args;
+
+	for (int k = 0; k < matTemp->numRowsEvaluate; k++)
+	{
+		int temp;
+		int multi = 1;
+		int rowOffset = matTemp->rowStartEvaluate + 1;
+		int i = ((matTemp->rowStartEvaluate)*(matTemp->randomSize))+rowOffset;
+		
+		for(i; i < (rowOffset)*(matTemp->randomSize); i++)
+		{
+			// Do transposition.
+			temp = matTemp->numbers[i];
+			matTemp->numbers[i] = matTemp->numbers[i+multi*(matTemp->randomSize-1)];
+			matTemp->numbers[i+multi*(matTemp->randomSize-1)] = temp;
+			multi++;
+		}
+		matTemp->rowStartEvaluate++;
+		
+	}
+	return (NULL);	
+}
 
 void* transformBlock(void* args)
 {
@@ -93,36 +190,6 @@ void* transformBlocks(void* args)
 
 	
 	return (NULL);
-}
-
-// Display entire matrix
-void display(void* args)
-{
-
-	// Creat the struct
-	struct matrixBlockTransformProps *matPropsDisp = (struct matrixBlockTransformProps*)args;
-
-	int count = 0;
-	int mat = 0;
-	// Displaying matA	
-    	cout << "2-D Matrix A:" << endl << endl;
-	cout << setw(6);
-   	for (int i = 0; i < matPropsDisp->randomSize*matPropsDisp->randomSize ; i++)
-	{
-		cout << matPropsDisp->numbers[i] << setw(6);
-		count++;
-		mat++;
-		if (mat == matPropsDisp->randomSize*matPropsDisp->randomSize)
-		{
-			cout << endl;
-			mat = 0;
-		}
-		if (count == matPropsDisp->randomSize)
-		{
-			cout << endl;
-			count = 0;
-		}
-	}
 }
 
 void displayBlock(void* args)
@@ -357,47 +424,121 @@ void* BlockTransformSwap(void* args)
 int main ( int argc, char* argv[] )
 {
 	// Define clock
-	clock_t t;
-	int randomSize = 4;
+	clock_t start_t, end_t;
+	int randomSize = 16;
 
 	// User input
-	/* while (randomSize != 10 | randomSize != 20 | randomSize != 30)
+	while (randomSize != 128 | randomSize != 1024 | randomSize != 2048 | randomSize != 4096)
 	{
-		cout << "Please enter either, 10, 20 or 30 for the size of the matrix you want to do multiplication on:";
+		cout << "Please enter either, 128, 1024, 2048 or 4096 for the size of the matrix you want to do transform: ";
 		cin >> randomSize;
-		if (randomSize == 10 || randomSize == 20 || randomSize == 30)
+		if (randomSize == 128 || randomSize == 1024 || randomSize == 2048 || randomSize == 4096)
 		{
 			cout << endl;
 			break;
 		}
-	} */	
-
+	}
+	
 	srand(time(NULL));
 
+	////////////////////// Normal Transformation (No threading) ///////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////////
+
 	// Create the struct
-	struct matrixBlockTransformProps *matProps = (struct matrixBlockTransformProps*) malloc(sizeof(struct matrixBlockTransformProps));
+	/*struct matrixDiagTransformProps *matPropsDiag = (struct matrixDiagTransformProps*) malloc(sizeof(struct matrixDiagTransformProps));
 	
-	matProps->numbers = new int [randomSize*randomSize];
-	
-	matProps->randomSize = randomSize;
+	// Declare Matrix A and Matrix B that will be multiplied together later on.
+	matPropsDiag->numbers = new int [randomSize*randomSize];
+	matPropsDiag->randomSize = randomSize;
 
 	// Populate Array
 	for (int i = 0; i < (randomSize*randomSize); i++)
 	{  
-		//matProps->numbers[i] = rand() % (randomSize*randomSize); 
-		matProps->numbers[i] = i+1;
+		matPropsDiag->numbers[i] = rand() % randomSize; 
+		//matProps->numbers[i] = i+1;// Used for testing purposes
 	}
 
+
 	//display((void *) matProps);
+	//cin.get();
+
+	// Normal function call to do transformation
+	//transformDiagNorm((void *) matProps);
+
+	//display((void *) matProps);*/
+	////////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////////////////
+	
+	////////////////////// PThread Diagonal Transformation /////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////////////////
+	
+	// Create the struct
+	struct matrixDiagTransformProps *matProps = (struct matrixDiagTransformProps*) malloc(sizeof(struct matrixDiagTransformProps));
+	
+	// Declare matrix for transformation
+	matProps->numbers = new int [randomSize*randomSize];
+	matProps->randomSize = randomSize;
+
+	// Populate
+	for (int i = 0; i < (randomSize*randomSize); i++)
+	{  
+		matProps->numbers[i] = rand() % randomSize*randomSize; 
+		//matProps->numbers[i] = i+1; // Used for testing purposes
+	}
+
+
+	//display((void *) matProps); // Display matrix before transformation. Used for testing purposes
+	const int numThread = 4;
+	pthread_t threads[numThread];
+	int lastStart = 0;
+	
+	start_t = clock();
+	for (int i = 0; i < numThread; i++) // can be either randomSize or randomSize - 1. Dont 		need last thread as it only tries to compute the last value which does not move anyways.
+	{
+
+		// Create the struct for the thread
+		matrixDiagTransformProps *mat = (struct matrixDiagTransformProps*) malloc(sizeof(struct matrixDiagTransformProps));
+		mat->numbers = matProps->numbers;
+		mat->randomSize = matProps->randomSize; 
+		mat->rowStartEvaluate = lastStart;
+		lastStart = mat->rowStartEvaluate + randomSize/numThread;
+		mat->numRowsEvaluate = randomSize/numThread;
+		pthread_create(&threads[i], NULL, transformDiagPthread, (void *)mat);
+	}
+	
+	// Join threads
+	for (int i = 0; i < numThread; i++)
+	{	
+		pthread_join(threads[i], NULL);
+	}
+	
+	end_t = clock();
+	//display((void *) matProps); // Display matrix after transformation. Used for testing purposes
+	cout << "PThread Using Diagonal Method For Transformation of A Matrix Results:" << endl << endl;
+	cout << "Number of Threads: " << numThread << endl;
+	cout << "Rows Transposed Per Thread: " << randomSize/numThread << endl;
+	cout << "Time taken to execute: " << (double)(end_t - start_t)/CLOCKS_PER_SEC << "s" << endl << endl << endl;
+	///////////////////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////////
+
+	////////////////////// PThread Block Method Transformation ////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////////
+
+
+	// Create the struct
+	struct matrixBlockTransformProps *matProps2 = (struct matrixBlockTransformProps*) malloc(sizeof(struct matrixBlockTransformProps));
+
+	matProps2->numbers = new int [randomSize*randomSize];
+	
+	matProps2->randomSize = randomSize;
 
 	// Repopulate Array
 	for (int i = 0; i < (randomSize*randomSize); i++)
 	{  
-		matProps->numbers[i] = i+1;
+		matProps2->numbers[i] = rand() % randomSize; 
+		//matProps2->numbers[i] = i+1; // Used for testing purposes
 	}
-
-	//display((void *) matProps);
-	// Threading
 
 	// This was used originally to change the number of threads based on the size of the blocks wanted
 	/*int blockSizeDim = 4;
@@ -407,7 +548,8 @@ int main ( int argc, char* argv[] )
 	matProps->transpose1 = new int [blockSize];
 	matProps->transpose2 = new int [blockSize];*/
 
-	// Calculate the how many blocks and the dimensions of the blocks needed to execute the transposition based on the number of 		threads defined.
+
+	// Calculate the how many blocks and the dimensions of the blocks needed to execute the transposition 		based on the number of threads defined.
 	const int numberThreads = 10;
 	int numBlocks = numberThreads;
 	
@@ -418,35 +560,25 @@ int main ( int argc, char* argv[] )
 	}
 	int blockSize = (randomSize*randomSize)/numBlocks;
 	int blockSizeDim = sqrt(blockSize);	
-	
-	
-	
-	
-	cout << "Number of Threads: " << numberThreads << endl;
-	cout << "Number of Blocks: " << numBlocks << endl;
-	cout << "Block Size: " << blockSize << endl;
-	cout << "Block Dimension: " << blockSizeDim << endl;
 
-	matProps->transpose1 = new int [blockSize];
-	matProps->transpose2 = new int [blockSize];	
+	matProps2->transpose1 = new int [blockSize];
+	matProps2->transpose2 = new int [blockSize];
 
-
-	//cout << numThreads << endl;
-	//cin.get();
-	pthread_t threads[numberThreads];
+	pthread_t threadsBlock[numberThreads];
 	int count = 0;
-	int i = 0;	
-
-
-	// for loop to deal with diagonal blocks separately as they only need transposing not switching.
+	int i = 0;
+	
+	// display((void *) matProps2); // Display matrix before transformation. Used for testing
+	// For loop to deal with diagonal blocks separately as they only need transposing not switching.
+	start_t = clock();
 	for (i; i < randomSize/blockSizeDim; i++)
 	{
 		// Create the struct for the thread
 		matrixBlockTransformProps *mat = (struct matrixBlockTransformProps*) malloc(sizeof(struct matrixBlockTransformProps));
-		mat->numbers = matProps->numbers;
-		mat->transpose1 = matProps->transpose1;
-		mat->transpose2 = matProps->transpose2;
-		mat->randomSize = matProps->randomSize; 
+		mat->numbers = matProps2->numbers;
+		mat->transpose1 = matProps2->transpose1;
+		mat->transpose2 = matProps2->transpose2;
+		mat->randomSize = matProps2->randomSize; 
 		mat->blockSize = blockSize;
 		mat->blockDim = blockSizeDim;
 		//mat->count = count;
@@ -455,7 +587,7 @@ int main ( int argc, char* argv[] )
 		mat->startPlaceHolder1 = (count*randomSize*blockSizeDim) + (i*blockSizeDim);
 		mat->endPlaceHolder1 = mat->startPlaceHolder1 + blockSizeDim + ((blockSizeDim-1)*randomSize) - 1;
 		//cout << mat->startPlaceHolder1 << "		" << mat->endPlaceHolder1 << endl;
-		pthread_create(&threads[i], NULL, DiagBlockTransform, (void *)mat);
+		pthread_create(&threadsBlock[i], NULL, DiagBlockTransform, (void *)mat);
 		//cin.get();
 		count++;	
 	}
@@ -475,10 +607,10 @@ int main ( int argc, char* argv[] )
 		//cout << i << endl;
 		// Create the struct for the thread
 		matrixBlockTransformProps *mat = (struct matrixBlockTransformProps*) malloc(sizeof(struct matrixBlockTransformProps));
-		mat->numbers = matProps->numbers;
-		mat->transpose1 = matProps->transpose1;
-		mat->transpose2 = matProps->transpose2;
-		mat->randomSize = matProps->randomSize; 
+		mat->numbers = matProps2->numbers;
+		mat->transpose1 = matProps2->transpose1;
+		mat->transpose2 = matProps2->transpose2;
+		mat->randomSize = matProps2->randomSize; 
 		mat->blockSize = blockSize;
 		mat->blockDim = blockSizeDim;
 		//mat->count = count;
@@ -492,7 +624,7 @@ int main ( int argc, char* argv[] )
 		blockNum++;
 		secondMatOffset += randomSize*blockSizeDim - blockSizeDim;
 		//cout << endl << "MatOffset		" << secondMatOffset << endl;
-		pthread_create(&threads[i], NULL, BlockTransformSwap, (void *)mat);
+		pthread_create(&threadsBlock[i], NULL, BlockTransformSwap, (void *)mat);
 		//display((void *) matProps);
 		//cin.get();
 		// If you reach the end of a row of blocks, go to the next row
@@ -508,15 +640,25 @@ int main ( int argc, char* argv[] )
 		
 
 	}	
-	//cout << endl << i << endl;
+
 	// Join threads
 	for (int i = 0; i < numberThreads; i++)
 	{	
-		pthread_join(threads[i], NULL);
+		pthread_join(threadsBlock[i], NULL);
 
 	}
+	end_t = clock();
 
-	display((void *) matProps);
+	cout << "PThread Using Blocks Method For Transformation of A Matrix Results:" << endl << endl; 
+	cout << "Number of Threads: " << numberThreads << endl;
+	cout << "Number of Blocks: " << numBlocks << endl;
+	cout << "Block Size (Number of Elements in Block): " << blockSize << endl;
+	cout << "Block Dimension: " << blockSizeDim << endl;
+	cout << "Time taken to execute: " << (double)(end_t - start_t)/CLOCKS_PER_SEC << "s" << endl;
 
+	//display((void *) matProps2); // Display final matrix after transformation. Used for testing
+
+	///////////////////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////////
  return 0;
 }

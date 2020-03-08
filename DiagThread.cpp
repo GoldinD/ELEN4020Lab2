@@ -108,7 +108,7 @@ int main ( int argc, char* argv[] )
 {
 	// Define clock
 	clock_t t;
-	int randomSize = 4096;
+	int randomSize = 16;
 
 	// User input
 	/* while (randomSize != 10 | randomSize != 20 | randomSize != 30)
@@ -154,7 +154,7 @@ int main ( int argc, char* argv[] )
 	//display((void *) matProps);
 
 	// Threading
-	//display((void *) matProps);
+	display((void *) matProps);
 	const int numThread = 4;
 	pthread_t threads[numThread];
 	int lastStart = 0;
@@ -178,7 +178,7 @@ int main ( int argc, char* argv[] )
 
 	}
 
-	//display((void *) matProps);
+	display((void *) matProps);
 	cout << "Number of Threads: " << numThread << endl;
 	cout << "Rows Transposed Per Thread: " << randomSize/numThread << endl;
 
